@@ -24,7 +24,7 @@
 ## Image Workflow
 
 <p align="center">
-  <img src="https://github.com/Tchatchoua14/FlowMind-AI-Delivery-Intelligence-Airtable/blob/65e7356e5d4fcf65c7ea06d0ff13277de832e9d9/FlowMind%20%20Ai%20Delivery%20.png" alt="n8n Logo" />
+  <img src="https://github.com/Tchatchoua14/FlowMind-AI-Delivery-Intelligence-Airtable/blob/c53fbf0821d42daa44354a2e074cc5b1ae9c322c/Capture%20d%E2%80%99%C3%A9cran%202026-05-20%20175006.png" alt="n8n Logo" />
 </p>
 
 ---
