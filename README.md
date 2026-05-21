@@ -1,25 +1,25 @@
 <p align="center">
   <img src="https://raw.githubusercontent.com/n8n-io/n8n/master/assets/n8n-logo.png" width="160" alt="n8n" />
 </p>
-<h1 align="center">FlowMind — AI Delivery Intelligence</h1>
+<h1 align="center">FlowMind — AI Delivery Intelligence Airtable</h1>
  
 <div align="center">
+
 [![n8n](https://img.shields.io/badge/n8n-Orchestration-FF6D5A?logo=n8n&logoColor=white)](https://n8n.io)
 [![Google Gemini](https://img.shields.io/badge/LLM-Google%20Gemini-4285F4?logo=google&logoColor=white)](https://ai.google.dev)
 [![PostgreSQL](https://img.shields.io/badge/Database-PostgreSQL-4169E1?logo=postgresql&logoColor=white)](https://postgresql.org)
 [![Airtable](https://img.shields.io/badge/Source-Airtable-18BFFF?logo=airtable&logoColor=white)](https://airtable.com)
-[![Slack](https://img.shields.io/badge/Notifications-Slack-4A154B?logo=slack&logoColor=white)](https://slack.com)
-[![Agents](https://img.shields.io/badge/AI%20Agents-4-7F77DD)]()
-[![Nodes](https://img.shields.io/badge/Nodes-60+-22C55E)]()
-[![Status](https://img.shields.io/badge/Status-Bêta%20avancée-EF9F27)]()
+[![Slack](https://img.shields.io/badge/Slack-Notifications-4A154B?logo=slack&logoColor=white)](https://slack.com)
+[![Multi-tenant](https://img.shields.io/badge/Multi--tenant-Ready-A855F7)]()
+[![Nodes](https://img.shields.io/badge/Nodes-117-22C55E)]()
+[![Status](https://img.shields.io/badge/Status-Production%20Ready-22C55E)]()
 [![License](https://img.shields.io/badge/License-MIT-22C55E)]()
- 
+
 **Système d'orchestration décisionnelle IA pour la prévention d'échec de sprint logiciel**
- 
-*Détecte · Score · Analyse · Décide · Agit — sans attendre*
- 
+
+*Détecte · Analyse · Décide · Agit — sans attendre*
+
 </div>
----
 
 ## Image Workflow
 
