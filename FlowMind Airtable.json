@@ -1,0 +1,1610 @@
+{
+  "name": "FlowMind Airtable",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "seconds"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.3,
+      "position": [
+        480,
+        1216
+      ],
+      "id": "3bd692c5-da58-4622-9c07-51e9293d9b29",
+      "name": "Schedule Trigger"
+    },
+    {
+      "parameters": {
+        "mode": "raw",
+        "jsonOutput": "={\n  \"client_id\": \"client_airtable_001\",\n  \"client_name\": \"Client Airtable\",\n  \"source_method\": \"airtable_http\",\n\n  \"airtable_base_id\": \"app\",\n  \"airtable_table_name\": \"Sprint 0\",\n  \"airtable_token\": \"\",\n\n  \"sprint_start_date\": \"2026-05-20\",\n  \"sprint_end_date\": \"2026-06-03\",\n\n  \"slack_channel\": \"#tous-2cconseil\",\n  \"email_to\": \"tchatchouaviny@yahoo.fr\",\n\n  \"critical_threshold\": 80,\n  \"high_threshold\": 55,\n  \"medium_threshold\": 30,\n  \"retry_count\": \"{{ $json.retry_count || 0 }}\",\n\n  \"max_retry\": 3,\n  \"created_at\": \"{{ new Date().toISOString() }}\"\n}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        704,
+        1216
+      ],
+      "id": "2eea0f58-6db1-46ba-95ad-3ec69f52fe3e",
+      "name": "Set - Client Context",
+      "notes": "Rôle : Fournir le client_id et credentials dynamiques pour chaque source."
+    },
+    {
+      "parameters": {
+        "mode": "raw",
+        "jsonOutput": "={\n  \"client_id\": \"{{ $node['Set - Client Context'].json.client_id }}\",\n  \"client_name\": \"{{ $node['Set - Client Context'].json.client_name }}\",\n  \"email_to\": \"{{ $node['Set - Client Context'].json.email_to }}\",\n  \"slack_channel\": \"{{ $node['Set - Client Context'].json.slack_channel }}\",\n\n  \"notification_required\": \"{{ $json.notification_required }}\",\n  \"notification_target\": \"{{ $json.notification_target }}\",\n\n  \"global_risk_level\": \"{{ $json.global_risk_level }}\",\n  \"sprint_failure_probability\": \"{{ $json.sprint_failure_probability }}\",\n  \"confidence_score\": \"{{ $json.confidence_score }}\",\n\n  \"final_summary\": \"{{ $json.final_summary }}\",\n  \"slack_message\": \"{{ $json.slack_message }}\",\n  \"decisions_today\": \"{{ JSON.stringify($json.decisions_today || []) }}\",\n  \"escalations\": \"{{ JSON.stringify($json.escalations || []) }}\",\n\n  \"created_at\": \"{{ new Date().toISOString() }}\"\n}",
+        "includeOtherFields": true,
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        5664,
+        800
+      ],
+      "id": "85a847c2-b2af-413c-b83c-08c9cab3791c",
+      "name": "Set - Notify PM / Second Reviewer"
+    },
+    {
+      "parameters": {
+        "select": "channel",
+        "channelId": {
+          "__rl": true,
+          "value": "#tous-2cconseil",
+          "mode": "name"
+        },
+        "text": "=*FlowMind — Sprint à risque*\n\n*Niveau global* : {{ $json.global_risk_level }}\n*Probabilité d’échec* : {{ $json.sprint_failure_probability }}%\n*Confiance IA* : {{ $json.confidence_score }}%\n\n*Résumé*\n{{ $json.final_summary }}\n\n*Message*\n{{ $json.slack_message }}",
+        "otherOptions": {}
+      },
+      "type": "n8n-nodes-base.slack",
+      "typeVersion": 2.4,
+      "position": [
+        6112,
+        800
+      ],
+      "id": "cb052c6f-7a44-4b27-937a-bcb862b8c0ce",
+      "name": "Slack Notifications",
+      "webhookId": "a045dfb6-16f2-44ac-97f2-e2b5751966dd",
+      "credentials": {
+        "slackApi": {
+          "id": "I9JLfVKIGdJ5G7zO",
+          "name": "Slack account 2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "INSERT INTO delivery_risks (\n  alert_key,\n  source,\n  type,\n  external_id,\n  task_id,\n  title,\n  status,\n  assignee,\n  priority,\n  sprint,\n  risk_score,\n  risk_level,\n  risk_type,\n  reasons_detected,\n  decision_required,\n  blocker_type,\n  pr_blocker_summary,\n  linked_pr_count,\n  linked_prs,\n  source_url,\n  sprint_health_score,\n  global_risk_level,\n  total_risks,\n  critical_risks,\n  high_risks,\n  medium_risks,\n  executive_summary,\n  status_alert,\n  detected_at,\n  updated_at,\n  raw_context\n)\nVALUES (\n  $1, $2, $3, $4, $5,\n  $6, $7, $8, $9, $10,\n  $11, $12, $13, $14, $15,\n  $16, $17, $18, $19, $20,\n  $21, $22, $23, $24, $25,\n  $26, $27, $28, $29, NOW(), $30\n)\nON CONFLICT (alert_key)\nDO UPDATE SET\n  risk_score = EXCLUDED.risk_score,\n  risk_level = EXCLUDED.risk_level,\n  risk_type = EXCLUDED.risk_type,\n  reasons_detected = EXCLUDED.reasons_detected,\n  decision_required = EXCLUDED.decision_required,\n  blocker_type = EXCLUDED.blocker_type,\n  pr_blocker_summary = EXCLUDED.pr_blocker_summary,\n  linked_pr_count = EXCLUDED.linked_pr_count,\n  linked_prs = EXCLUDED.linked_prs,\n  sprint_health_score = EXCLUDED.sprint_health_score,\n  global_risk_level = EXCLUDED.global_risk_level,\n  total_risks = EXCLUDED.total_risks,\n  critical_risks = EXCLUDED.critical_risks,\n  high_risks = EXCLUDED.high_risks,\n  medium_risks = EXCLUDED.medium_risks,\n  executive_summary = EXCLUDED.executive_summary,\n  updated_at = NOW(),\n  raw_context = EXCLUDED.raw_context\nRETURNING *;",
+        "options": {
+          "queryReplacement": "={{ [\n  $json.alert_key,\n  $json.source,\n  $json.type,\n  $json.external_id,\n  $json.task_id,\n  $json.title,\n  $json.status,\n  $json.assignee,\n  $json.priority,\n  $json.sprint,\n  $json.risk_score,\n  $json.risk_level,\n  $json.risk_type,\n  $json.reasons_detected,\n  $json.decision_required,\n  $json.blocker_type,\n  $json.pr_blocker_summary,\n  $json.linked_pr_count,\n  JSON.stringify($json.linked_prs || []),\n  $json.source_url,\n  $json.sprint_health_score,\n  $json.global_risk_level,\n  $json.total_risks,\n  $json.critical_risks,\n  $json.high_risks,\n  $json.medium_risks,\n  $json.executive_summary,\n  $json.status_alert || \"Ouverte\",\n  $json.detected_at,\n  JSON.stringify($json.raw_context || {})\n] }}"
+        }
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        5664,
+        992
+      ],
+      "id": "fe4dfab1-7c4b-4852-aac4-06a3c0dec5f8",
+      "name": "Postgres - Insert Agent Recommendations",
+      "credentials": {
+        "postgres": {
+          "id": "hOFDtZcMDBz2Idwq",
+          "name": "Postgres account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const items = $input.all();\n\nfunction extractJson(value) {\n  if (typeof value === \"object\" && value !== null) return value;\n  if (!value) return null;\n\n  const text = String(value).trim();\n\n  try {\n    return JSON.parse(text);\n  } catch (e) {\n    const match = text.match(/\\{[\\s\\S]*\\}/);\n    if (!match) return null;\n\n    try {\n      return JSON.parse(match[0]);\n    } catch (e2) {\n      return null;\n    }\n  }\n}\n\nfunction normalizeConfidence(value) {\n  const number = Number(value || 0);\n  if (number <= 1) return Math.round(number * 100);\n  return Math.round(number);\n}\n\nconst output = [];\n\nfor (const item of items) {\n  const raw = item.json.output || item.json.text || item.json.response || item.json;\n  const parsed = extractJson(raw);\n\n  if (!parsed) {\n    output.push({\n      json: {\n        decision_valid: false,\n        error_type: \"FINAL_DECISION_PARSE_ERROR\",\n        error_message: \"Sortie Decision Synthesizer invalide ou non JSON\",\n        final_summary: \"FlowMind a détecté des risques, mais la synthèse IA doit être vérifiée manuellement.\",\n        global_risk_level: \"À vérifier\",\n        sprint_failure_probability: 0,\n        critical_decision: false,\n        ai_data_quality: {\n          complete: false,\n          failed_agents: [\"Decision Synthesizer\"],\n          warning: \"Sortie non JSON\"\n        },\n        decisions_today: [],\n        review_actions: [],\n        scope_actions: [],\n        escalations: [],\n        notification_required: true,\n        notification_target: \"ops\",\n        slack_message: \"FlowMind : la synthèse IA finale est invalide. Vérification manuelle requise.\",\n        confidence_score: 0,\n        raw_output: raw,\n        created_at: new Date().toISOString()\n      }\n    });\n    continue;\n  }\n\n  output.push({\n    json: {\n      decision_valid: true,\n      final_summary: parsed.final_summary || \"\",\n      global_risk_level: parsed.global_risk_level || \"\",\n      sprint_failure_probability: Number(parsed.sprint_failure_probability || 0),\n      critical_decision: parsed.critical_decision === true,\n\n      ai_data_quality: parsed.ai_data_quality || {\n        complete: true,\n        failed_agents: [],\n        warning: \"\"\n      },\n\n      decisions_today: parsed.decisions_today || [],\n      review_actions: parsed.review_actions || [],\n      scope_actions: parsed.scope_actions || [],\n      escalations: parsed.escalations || [],\n\n      notification_required: parsed.notification_required === true,\n      notification_target: parsed.notification_target || \"\",\n      slack_message: parsed.slack_message || \"\",\n      confidence_score: normalizeConfidence(parsed.confidence_score),\n\n      final_decision_output: parsed,\n      created_at: new Date().toISOString()\n    }\n  });\n}\n\nreturn output;"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        4992,
+        800
+      ],
+      "id": "3e28994e-a001-4632-afcc-797c78c0de02",
+      "name": "Code - Validate Final Decision Output",
+      "notesInFlow": true,
+      "notes": "Rôle : relier les task aux PR / MR correspondantes.\nChamps ajoutés : linked_prs, linked_pr_count, has_blocked_pr, has_waiting_review, has_failed_ci."
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=Tu es FlowMind Decision Synthesizer, l’agent final d’orchestration décisionnelle.\n\nTu reçois les sorties de plusieurs agents IA. Certaines peuvent être des fallbacks avec agent_failed=true.\n\nVoici les données disponibles :\n\n{{ JSON.stringify($input.all().map(item => item.json), null, 2) }}\n\nTa mission :\n1. Synthétiser les risques.\n2. Dire si les données IA sont complètes ou incomplètes.\n3. Prioriser les décisions à prendre aujourd’hui.\n4. Déterminer les notifications nécessaires.\n5. Ne jamais inventer d’information absente.\n6. Si un agent a échoué, le signaler dans ai_data_quality.\n\nRéponds uniquement en JSON strict.\n\nFormat attendu :\n{\n  \"final_summary\": \"\",\n  \"global_risk_level\": \"\",\n  \"sprint_failure_probability\": 0,\n  \"critical_decision\": false,\n  \"ai_data_quality\": {\n    \"complete\": true,\n    \"failed_agents\": [],\n    \"warning\": \"\"\n  },\n  \"decisions_today\": [],\n  \"review_actions\": [],\n  \"scope_actions\": [],\n  \"escalations\": [],\n  \"notification_required\": false,\n  \"notification_target\": \"\",\n  \"slack_message\": \"\",\n  \"confidence_score\": 0\n}",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 3.1,
+      "position": [
+        4416,
+        800
+      ],
+      "id": "95c51a7f-6824-4ff8-bf32-22f16d5fcc13",
+      "name": "AI Agent - Decision Synthesizer",
+      "retryOnFail": true,
+      "waitBetweenTries": 5000,
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "numberInputs": 3
+      },
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3.2,
+      "position": [
+        4192,
+        784
+      ],
+      "id": "deae241e-0450-463f-9813-43a30b66f191",
+      "name": "Merge - Agent Outputs",
+      "notes": "Merge toutes les sources normalisées (Jira, GitHub, GitLab, Linear, Azure) en un dataset unique pour le scoring."
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=Tu es Knowledge Gap Detector, un agent IA spécialisé dans la détection des manques de connaissance, dépendances et documentation.\n\nVoici le contexte anti-échec :\n\n{{ JSON.stringify($json, null, 2) }}\n\nTa mission :\n1. Identifier les blocages liés au manque de connaissance.\n2. Identifier les tâches qui nécessitent un senior.\n3. Identifier les dépendances critiques.\n4. Proposer les documents ou clarifications à créer.\n5. Proposer un backup si une seule personne bloque.\n\nRéponds uniquement en JSON strict.\n\nFormat attendu :\n{\n  \"agent\": \"Knowledge Gap Detector\",\n  \"knowledge_gap_level\": \"\",\n  \"knowledge_risks\": [],\n  \"senior_needed_topics\": [],\n  \"documentation_needed\": [],\n  \"recommended_knowledge_actions\": [],\n  \"confidence_score\": 0,\n  \"critical_decision\": false\n}",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 3.1,
+      "position": [
+        3616,
+        1296
+      ],
+      "id": "5bcb103e-d8d3-45da-9337-21d4161b6a25",
+      "name": "AI Agent - Knowledge Gap Detector",
+      "retryOnFail": true,
+      "waitBetweenTries": 5000,
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=Tu es Friction Killer, un agent IA spécialisé dans la réduction des temps morts de validation.\n\nVoici le contexte anti-échec :\n\n{{ JSON.stringify($json, null, 2) }}\n\nTa mission :\n1. Identifier les blocages de validation.\n2. Identifier les tâches sans responsable.\n3. Identifier les validations trop lentes.\n4. Proposer qui doit agir.\n5. Proposer une escalade si nécessaire.\n\nRéponds uniquement en JSON strict.\n\nFormat attendu :\n{\n  \"agent\": \"Friction Killer\",\n  \"friction_level\": \"\",\n  \"blocked_reviews\": [],\n  \"slow_reviews\": [],\n  \"items_without_owner\": [],\n  \"recommended_review_actions\": [],\n  \"review_acceleration_summary\": \"\",\n  \"confidence_score\": 0,\n  \"critical_decision\": false\n}",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 3.1,
+      "position": [
+        3616,
+        752
+      ],
+      "id": "db5b5ea4-d604-4ae9-a1f7-2177aa29c446",
+      "name": "AI Agent - Friction Killer",
+      "retryOnFail": true,
+      "waitBetweenTries": 5000,
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=Tu es Guardian of Deadlines, un agent IA spécialisé dans l’anti-échec de sprint logiciel.\n\nVoici le contexte anti-échec :\n\n{{ JSON.stringify($json, null, 2) }}\n\nTa mission :\n1. Estimer le risque d’échec du sprint.\n2. Identifier les tâches qui menacent réellement la livraison.\n3. Proposer des arbitrages de scope.\n4. Dire ce qu’il faut protéger.\n5. Dire ce qu’il faut déprioriser.\n6. Donner les actions urgentes avec owner et deadline.\n\nRéponds uniquement en JSON strict.\n\nFormat attendu :\n{\n  \"agent\": \"Guardian of Deadlines\",\n  \"sprint_failure_probability\": 0,\n  \"delivery_forecast\": \"\",\n  \"global_risk_level\": \"\",\n  \"main_failure_causes\": [],\n  \"scope_decisions\": [],\n  \"critical_actions\": [],\n  \"tasks_to_deprioritize\": [],\n  \"tasks_to_protect\": [],\n  \"confidence_score\": 0,\n  \"critical_decision\": false\n}",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 3.1,
+      "position": [
+        3616,
+        352
+      ],
+      "id": "2340d2ac-e666-4951-a892-914fa2172669",
+      "name": "AI Agent - Guardian of Deadlines",
+      "retryOnFail": true,
+      "waitBetweenTries": 5000,
+      "disabled": true,
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "jsCode": "const items = $input.all();\nconst risks = items.map(item => item.json);\n\nfunction clean(value) {\n  if (value === null || value === undefined) return \"\";\n  return String(value).trim();\n}\n\nfunction groupBy(array, field) {\n  const result = {};\n  for (const item of array) {\n    const key = clean(item[field]) || \"Non qualifié\";\n    if (!result[key]) result[key] = [];\n    result[key].push(item);\n  }\n  return result;\n}\n\nconst totalRisks = risks.length;\nconst criticalRisks = risks.filter(r => r.risk_level === \"Critique\");\nconst highRisks = risks.filter(r => r.risk_level === \"Élevé\");\nconst mediumRisks = risks.filter(r => r.risk_level === \"Moyen\");\n\nconst validationRisks = risks.filter(r =>\n  clean(r.risk_type).toLowerCase().includes(\"validation\")\n);\n\nconst technicalRisks = risks.filter(r =>\n  clean(r.risk_type).toLowerCase().includes(\"technique\")\n);\n\nconst noOwnerRisks = risks.filter(r =>\n  !clean(r.assignee) ||\n  clean(r.reasons_detected).toLowerCase().includes(\"aucun responsable\")\n);\n\nconst risksByAssignee = groupBy(risks, \"assignee\");\nconst risksByType = groupBy(risks, \"risk_type\");\nconst risksBySource = groupBy(risks, \"source\");\n\nconst sprintHealthScore = risks[0]?.sprint_health_score ?? 100;\nconst globalRiskLevel = risks[0]?.global_risk_level ?? \"Faible\";\nconst executiveSummary = risks[0]?.executive_summary ?? \"\";\n\nlet estimatedFailureProbability = 0;\n\nif (sprintHealthScore >= 80) estimatedFailureProbability = 15;\nelse if (sprintHealthScore >= 60) estimatedFailureProbability = 35;\nelse if (sprintHealthScore >= 40) estimatedFailureProbability = 60;\nelse estimatedFailureProbability = 80;\n\nestimatedFailureProbability += criticalRisks.length * 5;\nestimatedFailureProbability += highRisks.length * 3;\nestimatedFailureProbability += validationRisks.length * 2;\n\nif (estimatedFailureProbability > 95) estimatedFailureProbability = 95;\n\nconst topRisks = risks\n  .sort((a, b) => Number(b.risk_score || 0) - Number(a.risk_score || 0))\n  .slice(0, 10);\n\nreturn [\n  {\n    json: {\n      project_context: {\n        sprint_health_score: sprintHealthScore,\n        global_risk_level: globalRiskLevel,\n        estimated_failure_probability: estimatedFailureProbability,\n        executive_summary: executiveSummary\n      },\n\n      risk_summary: {\n        total_risks: totalRisks,\n        critical_risks: criticalRisks.length,\n        high_risks: highRisks.length,\n        medium_risks: mediumRisks.length,\n        validation_risks: validationRisks.length,\n        technical_risks: technicalRisks.length,\n        no_owner_risks: noOwnerRisks.length\n      },\n\n      top_risks: topRisks,\n\n      grouped_insights: {\n        risks_by_assignee: Object.keys(risksByAssignee).map(name => ({\n          assignee: name,\n          count: risksByAssignee[name].length\n        })),\n        risks_by_type: Object.keys(risksByType).map(type => ({\n          risk_type: type,\n          count: risksByType[type].length\n        })),\n        risks_by_source: Object.keys(risksBySource).map(source => ({\n          source,\n          count: risksBySource[source].length\n        }))\n      },\n\n      all_risks: risks,\n      built_at: new Date().toISOString()\n    }\n  }\n];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        3392,
+        816
+      ],
+      "id": "b17c4679-9c64-4556-9812-e1c5348449b5",
+      "name": "Code - Build Anti-Failure Context",
+      "notesInFlow": true,
+      "notes": "Rôle : relier les task aux PR / MR correspondantes.\nChamps ajoutés : linked_prs, linked_pr_count, has_blocked_pr, has_waiting_review, has_failed_ci."
+    },
+    {
+      "parameters": {
+        "jsCode": "const items = $input.all();\nconst risks = items.map(item => item.json);\n\nif (risks.length === 0) {\n  return [\n    {\n      json: {\n        no_risk_detected: true,\n        sprint_health_score: 100,\n        global_risk_level: \"Faible\",\n        total_risks: 0,\n        critical_risks: 0,\n        high_risks: 0,\n        medium_risks: 0,\n        executive_summary: \"Aucun risque significatif détecté. Le sprint peut rester en suivi standard.\",\n        analyzed_at: new Date().toISOString()\n      }\n    }\n  ];\n}\n\nfunction clean(value) {\n  if (value === null || value === undefined) return \"\";\n  return String(value).trim();\n}\n\nfunction countBy(array, field) {\n  const result = {};\n  for (const item of array) {\n    const key = clean(item[field]) || \"Non qualifié\";\n    result[key] = (result[key] || 0) + 1;\n  }\n  return result;\n}\n\nfunction sortEntriesDesc(obj) {\n  return Object.entries(obj).sort((a, b) => b[1] - a[1]);\n}\n\nconst criticalRisks = risks.filter(r => r.risk_level === \"Critique\");\nconst highRisks = risks.filter(r => r.risk_level === \"Élevé\");\nconst mediumRisks = risks.filter(r => r.risk_level === \"Moyen\");\n\nlet sprintHealthScore = 100;\n\nsprintHealthScore -= criticalRisks.length * 18;\nsprintHealthScore -= highRisks.length * 10;\nsprintHealthScore -= mediumRisks.length * 5;\n\nconst totalRiskScore = risks.reduce((sum, r) => sum + Number(r.risk_score || 0), 0);\n\nif (totalRiskScore >= 300) sprintHealthScore -= 20;\nelse if (totalRiskScore >= 200) sprintHealthScore -= 12;\nelse if (totalRiskScore >= 100) sprintHealthScore -= 6;\n\nif (sprintHealthScore < 0) sprintHealthScore = 0;\n\nlet globalRiskLevel = \"Faible\";\nif (sprintHealthScore < 40) globalRiskLevel = \"Critique\";\nelse if (sprintHealthScore < 60) globalRiskLevel = \"Élevé\";\nelse if (sprintHealthScore < 80) globalRiskLevel = \"Moyen\";\n\nconst risksByType = countBy(risks, \"risk_type\");\nconst risksByAssignee = countBy(risks, \"assignee\");\nconst risksBySource = countBy(risks, \"source\");\n\nconst topRiskTypes = sortEntriesDesc(risksByType)\n  .slice(0, 5)\n  .map(([type, count]) => `${type}: ${count}`)\n  .join(\" | \");\n\nconst topAssignees = sortEntriesDesc(risksByAssignee)\n  .slice(0, 5)\n  .map(([person, count]) => `${person}: ${count}`)\n  .join(\" | \");\n\nlet executiveSummary = \"\";\n\nif (globalRiskLevel === \"Critique\") {\n  executiveSummary = `Le sprint est en zone critique avec ${risks.length} risque(s), dont ${criticalRisks.length} critique(s). Une décision d’arbitrage est nécessaire aujourd’hui.`;\n} else if (globalRiskLevel === \"Élevé\") {\n  executiveSummary = `Le sprint présente un niveau de risque élevé avec ${risks.length} risque(s). Les blocages principaux doivent être traités sous 24h.`;\n} else if (globalRiskLevel === \"Moyen\") {\n  executiveSummary = `Le sprint reste maîtrisable mais nécessite une surveillance renforcée. ${risks.length} risque(s) doivent être suivis.`;\n} else {\n  executiveSummary = `Le sprint est globalement sain malgré ${risks.length} risque(s) mineur(s).`;\n}\n\nreturn risks.map(risk => ({\n  json: {\n    ...risk,\n    sprint_health_score: sprintHealthScore,\n    global_risk_level: globalRiskLevel,\n    total_risks: risks.length,\n    critical_risks: criticalRisks.length,\n    high_risks: highRisks.length,\n    medium_risks: mediumRisks.length,\n    total_risk_score: totalRiskScore,\n    top_risk_types: topRiskTypes,\n    top_assignees: topAssignees,\n    top_sources: sortEntriesDesc(risksBySource).map(([s, c]) => `${s}: ${c}`).join(\" | \"),\n    executive_summary: executiveSummary,\n    analyzed_at: new Date().toISOString()\n  }\n}));"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2048,
+        944
+      ],
+      "id": "40b50762-0120-4130-97ef-cbdf454f2049",
+      "name": "Code - Sprint Health Score",
+      "notesInFlow": true,
+      "notes": "Rôle : relier les task aux PR / MR correspondantes.\nChamps ajoutés : linked_prs, linked_pr_count, has_blocked_pr, has_waiting_review, has_failed_ci."
+    },
+    {
+      "parameters": {
+        "jsCode": "const items = $input.all();\nconst today = new Date();\n\nfunction clean(value) {\n  if (value === null || value === undefined) return \"\";\n  return String(value).trim();\n}\n\nfunction parseDate(value) {\n  if (!value) return null;\n  const date = new Date(value);\n  return isNaN(date.getTime()) ? null : date;\n}\n\nfunction daysBetween(date1, date2) {\n  if (!date1 || !date2) return null;\n  return Math.floor((date2 - date1) / (1000 * 60 * 60 * 24));\n}\n\nfunction isDone(status) {\n  const value = clean(status).toLowerCase();\n  return (\n    value.includes(\"done\") ||\n    value.includes(\"termin\") ||\n    value.includes(\"closed\") ||\n    value.includes(\"resolved\") ||\n    value.includes(\"livré\") ||\n    value.includes(\"livree\") ||\n    value.includes(\"livrée\")\n  );\n}\n\nfunction priorityScore(priority) {\n  const value = clean(priority).toLowerCase();\n\n  if (value.includes(\"critique\") || value.includes(\"critical\") || value.includes(\"highest\")) return 20;\n  if (value.includes(\"haute\") || value.includes(\"high\")) return 15;\n  if (value.includes(\"moyenne\") || value.includes(\"medium\")) return 8;\n  if (value.includes(\"basse\") || value.includes(\"low\")) return 3;\n\n  return 5;\n}\n\nfunction getRiskLevel(score) {\n  if (score >= 80) return \"Critique\";\n  if (score >= 55) return \"Élevé\";\n  if (score >= 30) return \"Moyen\";\n  return \"Faible\";\n}\n\nfunction detectMainRiskType(reasons) {\n  const text = reasons.join(\" \").toLowerCase();\n\n  if (text.includes(\"review\") || text.includes(\"validation\")) return \"Validation\";\n  if (text.includes(\"ci/cd\") || text.includes(\"technique\")) return \"Technique\";\n  if (text.includes(\"deadline\") || text.includes(\"retard\") || text.includes(\"sprint\")) return \"Planning\";\n  if (text.includes(\"surchargé\") || text.includes(\"surcharge\")) return \"Charge équipe\";\n  if (text.includes(\"responsable\")) return \"Organisation\";\n  if (text.includes(\"bloqué\") || text.includes(\"bloquee\")) return \"Blocage\";\n\n  return \"Risque delivery\";\n}\n\nfunction buildDecision(riskLevel, item) {\n  const assignee = clean(item.assignee) || \"responsable non identifié\";\n\n  if (riskLevel === \"Critique\") {\n    return `Décision immédiate requise : arbitrer aujourd’hui, contacter ${assignee}, activer un backup si nécessaire et fixer une heure limite de résolution.`;\n  }\n\n  if (riskLevel === \"Élevé\") {\n    return `Action rapide sous 24h : demander un point de blocage à ${assignee}, confirmer la cause et définir une action de déblocage.`;\n  }\n\n  if (riskLevel === \"Moyen\") {\n    return `Surveillance renforcée : suivre l’évolution de la tâche et demander une mise à jour au prochain point projet.`;\n  }\n\n  return \"Suivi normal.\";\n}\n\nconst risks = [];\n\nfor (const item of items) {\n  const data = item.json;\n\n  const status = clean(data.status);\n  const title = clean(data.title);\n  const externalId = clean(data.external_id || data.task_id);\n\n  let score = 0;\n  const reasons = [];\n\n  const createdAt = parseDate(data.created_at);\n  const updatedAt = parseDate(data.updated_at);\n  const dueDate = parseDate(data.due_date);\n  const sprintEndDate = parseDate(data.sprint_end_date);\n\n  const ageDays = createdAt ? daysBetween(createdAt, today) : null;\n  const inactiveDays = updatedAt ? daysBetween(updatedAt, today) : null;\n  const remainingDays = sprintEndDate ? daysBetween(today, sprintEndDate) : null;\n\n  if (data.blocked === true) {\n    score += 30;\n    reasons.push(\"Élément marqué comme bloqué\");\n  }\n\n  if (clean(data.review_status).toLowerCase().includes(\"attente\")) {\n    score += 20;\n    reasons.push(\"Review ou validation en attente\");\n  }\n\n  if (clean(data.ci_status).toLowerCase() === \"failed\") {\n    score += 25;\n    reasons.push(\"CI/CD échouée\");\n  }\n\n  if (dueDate && dueDate < today && !isDone(status)) {\n    score += 25;\n    reasons.push(\"Deadline dépassée\");\n  }\n\n  if (inactiveDays !== null && inactiveDays >= 3 && !isDone(status)) {\n    score += 10;\n    reasons.push(`Aucune mise à jour depuis ${inactiveDays} jours`);\n  }\n\n  if (ageDays !== null && ageDays >= 5 && !isDone(status)) {\n    score += 10;\n    reasons.push(`Tâche ouverte depuis ${ageDays} jours`);\n  }\n\n  if (!clean(data.assignee)) {\n    score += 15;\n    reasons.push(\"Aucun responsable assigné\");\n  }\n\n  // Temps restant dans le sprint\n  if (remainingDays !== null && remainingDays <= 1 && !isDone(status)) {\n    score += 20;\n    reasons.push(\"Fin de sprint imminente\");\n  } else if (remainingDays !== null && remainingDays <= 3 && !isDone(status)) {\n    score += 12;\n    reasons.push(\"Moins de 3 jours restants dans le sprint\");\n  }\n\n  // Charge développeur\n  if (data.developer_overloaded === true) {\n    score += 20;\n    reasons.push(\"Développeur surchargé\");\n  }\n\n  score += priorityScore(data.priority);\n\n  if (score < 30) continue;\n\n  const riskLevel = getRiskLevel(score);\n  const riskType = detectMainRiskType(reasons);\n  const decision = buildDecision(riskLevel, data);\n\n  const alertKey = [\n    data.source || \"airtable\",\n    externalId || title,\n    riskType,\n    riskLevel\n  ].join(\"-\").replace(/\\s+/g, \"_\").toLowerCase();\n\n  risks.push({\n    json: {\n      alert_key: alertKey,\n\n      source: data.source || \"airtable\",\n      type: data.type || \"task\",\n      external_id: externalId,\n      task_id: data.task_id || externalId,\n      title,\n\n      status,\n      assignee: data.assignee || \"\",\n      assignee_email: data.assignee_email || \"\",\n      priority: data.priority || \"\",\n      sprint: data.sprint || \"\",\n\n      risk_score: score,\n      risk_level: riskLevel,\n      risk_type: riskType,\n\n      reasons_detected: reasons.join(\" | \"),\n      decision_required: decision,\n\n      blocker_type: data.blocker_type || riskType,\n      pr_blocker_summary: \"\",\n\n      linked_pr_count: 0,\n      linked_prs: [],\n\n      remaining_sprint_days: remainingDays,\n\n      developer_load: data.developer_load || {},\n      developer_overloaded: data.developer_overloaded === true,\n      developer_load_summary: data.developer_load_summary || \"\",\n\n      source_url: data.source_url || \"\",\n      detected_at: today.toISOString(),\n      status_alert: \"Ouverte\",\n\n      raw_context: data\n    }\n  });\n}\n\nreturn risks;"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1824,
+        944
+      ],
+      "id": "849b2dad-f335-416a-aeed-97303df9b4a2",
+      "name": "Code - Detect Delivery Risks",
+      "notesInFlow": true,
+      "notes": "Rôle : relier les task aux PR / MR correspondantes.\nChamps ajoutés : linked_prs, linked_pr_count, has_blocked_pr, has_waiting_review, has_failed_ci."
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "f57b1428-b92c-48dc-93fb-4eb93cfe76f3",
+              "leftValue": "={{ $json.type === \"task\" && $json.external_id !== \"\" && $json.title !== \"\" }}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        1600,
+        1040
+      ],
+      "id": "261ef44f-6e7d-436c-a0fa-12dc7dbbc379",
+      "name": "IF - Airtable Item Valide ?"
+    },
+    {
+      "parameters": {
+        "jsCode": "const items = $input.all();\n\nfunction clean(value) {\n  if (value === null || value === undefined) return \"\";\n  return String(value).trim();\n}\n\nfunction normalizePriority(priority) {\n  const value = clean(priority).toLowerCase();\n\n  if ([\"critical\", \"critique\", \"urgent\", \"highest\", \"blocker\"].some(v => value.includes(v))) return \"Critique\";\n  if ([\"high\", \"haute\", \"major\", \"majeure\"].some(v => value.includes(v))) return \"Haute\";\n  if ([\"medium\", \"moyenne\", \"normal\"].some(v => value.includes(v))) return \"Moyenne\";\n  if ([\"low\", \"basse\", \"mineure\"].some(v => value.includes(v))) return \"Basse\";\n\n  return priority || \"Non définie\";\n}\n\nfunction daysSince(dateValue) {\n  if (!dateValue) return null;\n  const date = new Date(dateValue);\n  if (isNaN(date.getTime())) return null;\n  return Math.floor((Date.now() - date.getTime()) / (1000 * 60 * 60 * 24));\n}\n\nfunction detectBlocked(fields) {\n  const text = [\n    fields[\"État\"],\n    fields.Etat,\n    fields.Status,\n    fields.Statut,\n    fields.Title,\n    fields.Titre,\n    fields.Description,\n    fields.Blocker,\n    fields.Blocage,\n    fields.Labels\n  ].join(\" \").toLowerCase();\n\n  return (\n    text.includes(\"blocked\") ||\n    text.includes(\"bloqué\") ||\n    text.includes(\"bloquee\") ||\n    text.includes(\"bloquée\") ||\n    text.includes(\"en attente\") ||\n    text.includes(\"waiting\") ||\n    text.includes(\"validation\")\n  );\n}\n\nfunction detectBlockerType(fields) {\n  const text = [\n    fields[\"État\"],\n    fields.Etat,\n    fields.Status,\n    fields.Statut,\n    fields.Title,\n    fields.Titre,\n    fields.Description,\n    fields.Blocker,\n    fields.Blocage,\n    fields.Labels\n  ].join(\" \").toLowerCase();\n\n  if (text.includes(\"review\") || text.includes(\"validation\") || text.includes(\"pr\")) return \"Validation\";\n  if (text.includes(\"bug\") || text.includes(\"api\") || text.includes(\"tech\") || text.includes(\"ci\")) return \"Technique\";\n  if (text.includes(\"client\") || text.includes(\"métier\") || text.includes(\"fonctionnel\")) return \"Fonctionnel\";\n  if (text.includes(\"dépendance\") || text.includes(\"dependency\")) return \"Dépendance\";\n  if (text.includes(\"absence\") || text.includes(\"disponibilité\")) return \"Disponibilité\";\n\n  return \"\";\n}\n\nconst clientContext = $(\"Set - Client Context\").item?.json || {};\nconst normalized = [];\n\nfor (const item of items) {\n  let records = [];\n\n  if (Array.isArray(item.json.records)) {\n    records = item.json.records;\n  } else if (item.json.id && item.json.fields) {\n    records = [item.json];\n  } else if (Array.isArray(item.json)) {\n    records = item.json;\n  }\n\n  for (const record of records) {\n    const fields = record.fields || record || {};\n\n    const externalId = clean(fields.TaskID || fields.ID || fields[\"ID tâche\"] || record.id);\n    const title = clean(\n  fields.Title ||\n  fields.Titre ||\n  fields[\"Titre US\"] ||\n  fields.Name ||\n  fields.Nom ||\n  fields.Summary ||\n  fields.Description\n);\n    const status = clean(fields.Status || fields[\"État\"] || fields.Etat || fields.Statut);\n    const assignee = clean(\n  fields.Assignee ||\n  fields[\"Assignée à\"] ||\n  fields.Responsable ||\n  fields[\"Responsable déblocage\"] ||\n  fields.Owner\n);\n    const assigneeEmail = clean(fields.AssigneeEmail || fields.Email || fields[\"Email responsable\"]);\n\n    const priority = normalizePriority(fields.Priority || fields.Priorité);\n    const sprint = clean(fields.Sprint);\n    const dueDate = clean(fields.DueDate || fields.Deadline || fields[\"Date limite\"]);\n    const createdAt = clean(fields.CreatedAt || fields[\"Date création\"] || record.createdTime);\n    const updatedAt = clean(fields.UpdatedAt || fields.LastModified || fields[\"Dernière modification\"]);\n    const sourceUrl = clean(fields.URL || fields.Link || fields.Lien);\n\n    const blocked = detectBlocked(fields);\n    const blockerType = detectBlockerType(fields);\n\n    normalized.push({\n      json: {\n        job_id: clientContext.job_id || `job_${Date.now()}`,\n        client_id: clientContext.client_id || \"client_airtable_001\",\n        client_name: clientContext.client_name || \"Client Airtable\",\n\n        source: \"airtable\",\n        source_method: clientContext.source_method || \"airtable_http\",\n        type: \"task\",\n\n        airtable_record_id: record.id || \"\",\n\n        external_id: externalId,\n        task_id: externalId,\n        title,\n\n        status,\n        status_category: status,\n        assignee,\n        assignee_email: assigneeEmail,\n        reporter: \"\",\n\n        priority,\n        sprint,\n        created_at: createdAt,\n        updated_at: updatedAt,\n        due_date: dueDate,\n        age_days: daysSince(createdAt),\n\n        sprint_start_date: clientContext.sprint_start_date || \"\",\n        sprint_end_date: clientContext.sprint_end_date || \"\",\n\n        labels: fields.Labels || [],\n        blocked,\n        blocker_type: blockerType,\n\n        review_status: clean(fields.ReviewStatus || fields[\"Statut review\"] || \"\"),\n        ci_status: clean(fields.CIStatus || fields[\"Statut CI\"] || \"\"),\n        linked_pr: clean(fields.LinkedPR || fields[\"Lien PR\"] || \"\"),\n\n        raw_source: \"airtable\",\n        source_url: sourceUrl,\n\n        raw_context: fields,\n        normalized_at: new Date().toISOString()\n      }\n    });\n  }\n}\n\nif (normalized.length === 0) {\n  return [\n    {\n      json: {\n        source: \"airtable\",\n        source_method: clientContext.source_method || \"airtable_http\",\n        client_id: clientContext.client_id || \"client_airtable_001\",\n        level: \"warning\",\n        type: \"empty_airtable_result\",\n        message: \"Aucune ligne Airtable exploitable trouvée. Vérifier le filtre, le nom de table, les colonnes ou la réponse HTTP.\",\n        raw_input_sample: items[0]?.json || {},\n        created_at: new Date().toISOString()\n      }\n    }\n  ];\n}\n\nreturn normalized;"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1152,
+        1040
+      ],
+      "id": "67d9dc66-92e2-4d41-8bf1-1b93ad76eb07",
+      "name": "Code - Normalize Airtable Sprint Items",
+      "alwaysOutputData": true,
+      "notes": "Rôle : Transformer les MR GitLab ouvertes en format compatible merge_request.\n\nContenu :\n\nChamps : iid, title, description, state, author, reviewers, assignees, created_at, updated_at, merged_at.\nDétection review et pipeline status (CI/CD).\nBlocage : blocked = true si CI échouée ou review longue."
+    },
+    {
+      "parameters": {
+        "url": "=https://api.airtable.com/v0/amgASQ2nJg/tUCsJlq",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "=Authorization",
+              "value": "=Bearer "
+            },
+            {
+              "name": "=Content-Type",
+              "value": "=application/json"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        928,
+        1136
+      ],
+      "id": "66e2802c-2b37-49e8-a05f-3a916d05221a",
+      "name": "HTTP - Airtable Get Sprint Items",
+      "onError": "continueErrorOutput",
+      "notes": "Rôle : Récupérer les Work Items Azure pour le client."
+    },
+    {
+      "parameters": {
+        "mode": "raw",
+        "jsonOutput": "={{\n{\n  job_id: $json.job_id || null,\n  client_id: $json.client_id || \"client_airtable_001\",\n  client_name: $json.client_name || \"Client Airtable\",\n\n  level: \"error\",\n  source: \"airtable\",\n  source_method: $json.source_method || \"airtable_http\",\n\n  error_type: \"VALIDATION_ERROR\",\n  error_message: \"Item Airtable invalide : external_id ou title manquant\",\n\n  external_id: $json.external_id || \"\",\n  title: $json.title || \"\",\n\n  validation_errors: [\n    !$json.external_id ? \"external_id manquant\" : null,\n    !$json.title ? \"title manquant\" : null\n  ].filter(Boolean),\n\n  raw_item: $json,\n\n  status: \"failed\",\n  created_at: new Date().toISOString()\n}\n}}",
+        "includeOtherFields": true,
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        1824,
+        1136
+      ],
+      "id": "e1e28f32-9f31-4198-8cc1-631fd133e238",
+      "name": "Set - Airtable Validation Error"
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "INSERT INTO audit_logs (\n  job_id,\n  level,\n  source,\n  error_type,\n  message,\n  details,\n  created_at\n)\nVALUES ($1, $2, $3, $4, $5, $6, NOW());",
+        "options": {
+          "queryReplacement": "={{ [\n  $json.job_id || null,\n  $json.level || \"error\",\n  $json.source || \"airtable\",\n  $json.error_type || \"VALIDATION_ERROR\",\n  $json.error_message || \"Erreur de validation Airtable\",\n  JSON.stringify({\n    client_id: $json.client_id,\n    client_name: $json.client_name,\n    source_method: $json.source_method,\n    external_id: $json.external_id,\n    title: $json.title,\n    validation_errors: $json.validation_errors || [],\n    raw_item: $json.raw_item || {},\n    status: $json.status\n  })\n] }}"
+        }
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        2048,
+        1136
+      ],
+      "id": "54923887-4063-4828-bbe8-0f57a8124c05",
+      "name": "Postgres - Insert Airtable Audit Log",
+      "credentials": {
+        "postgres": {
+          "id": "hOFDtZcMDBz2Idwq",
+          "name": "Postgres account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "mode": "raw",
+        "jsonOutput": "={{\n{\n  job_id: $json.job_id || 'job_' + Date.now(),\n  client_id: $('Set - Client Context').item.json.client_id || 'client_airtable_001',\n  client_name: $('Set - Client Context').item.json.client_name || 'Client Airtable',\n\n  source: 'airtable',\n  source_method: 'airtable_http',\n  api_node: 'HTTP - Airtable Get Sprint Items',\n\n  level: 'error',\n  error_type: 'API_FAILURE',\n  error_status: $json.statusCode || $json.status || $json.error?.status || 'unknown',\n\n  error_message:\n    $json.message ||\n    $json.error?.message ||\n    $json.error?.description ||\n    'Erreur API Airtable',\n\n  error_payload: $json,\n\n  retry_count: Number($json.retry_count || 0) + 1,\n  created_at: new Date().toISOString()\n}\n}}",
+        "includeOtherFields": true,
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        1152,
+        1328
+      ],
+      "id": "74b1304b-0bdd-48a6-94f0-72469b0706eb",
+      "name": "Set - Airtable API Error"
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "INSERT INTO audit_logss (\n  job_id,\n  client_id,\n  level,\n  source,\n  source_method,\n  node_name,\n  error_type,\n  message,\n  details,\n  created_at\n)\nVALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, NOW());",
+        "options": {
+          "queryReplacement": "={{ [\n  $json.job_id || null,\n  $json.client_id || null,\n  $json.level || \"error\",\n  $json.source || \"airtable\",\n  $json.source_method || \"airtable_http\",\n  $json.api_node || \"HTTP - Airtable Get Sprint Items\",\n  $json.error_type || \"API_FAILURE\",\n  $json.error_message || \"Erreur API Airtable\",\n  JSON.stringify($json.error_payload || $json)\n] }}"
+        }
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        1376,
+        1328
+      ],
+      "id": "be3b7aad-d23f-4023-a54c-4586ae31a660",
+      "name": "Postgres - Insert API Audit Log",
+      "credentials": {
+        "postgres": {
+          "id": "hOFDtZcMDBz2Idwq",
+          "name": "Postgres account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "select": "channel",
+        "channelId": {
+          "__rl": true,
+          "value": "={{ $node[\"Set - Client Context\"].json.slack_channel || \"#tous-2cconseil\" }}",
+          "mode": "name"
+        },
+        "text": "=FlowMind — erreur API Airtable\n\nClient : {{ $json.client_id }}\nSource : {{ $json.source_method }}\nNœud : {{ $json.api_node }}\nErreur : {{ $json.error_status }}\nMessage : {{ $json.error_message }}\nTentative : {{ $json.retry_count }}/3\n\nAction : vérifier le token Airtable, le Base ID, le nom de table ou les droits API.",
+        "otherOptions": {}
+      },
+      "type": "n8n-nodes-base.slack",
+      "typeVersion": 2.4,
+      "position": [
+        1824,
+        1328
+      ],
+      "id": "8be81e53-965b-4cc4-9ea5-5909425087f8",
+      "name": "Slack - Notify Ops API Error",
+      "webhookId": "a045dfb6-16f2-44ac-97f2-e2b5751966dd",
+      "credentials": {
+        "slackApi": {
+          "id": "I9JLfVKIGdJ5G7zO",
+          "name": "Slack account 2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "f57b1428-b92c-48dc-93fb-4eb93cfe76f3",
+              "leftValue": "={{ Number($json.retry_count || 0) < 3 }}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        2272,
+        1408
+      ],
+      "id": "534d10a7-141f-427c-a6d4-79fbc6ef47c7",
+      "name": "IF - Airtable Retry Count < 3 ?"
+    },
+    {
+      "parameters": {
+        "amount": 2,
+        "unit": "minutes"
+      },
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1.1,
+      "position": [
+        2048,
+        1328
+      ],
+      "id": "5e051437-9ff1-4a38-b759-fc0ef89bf69d",
+      "name": "Wait - Airtable Retry Delay",
+      "webhookId": "644433d8-8897-4cb1-ac73-0d01e7b09b8c"
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatGoogleGemini",
+      "typeVersion": 1,
+      "position": [
+        3696,
+        576
+      ],
+      "id": "f1b12dd4-f5f4-47e9-af22-6fe9d700b197",
+      "name": "Google Gemini Guardian of Deadlines",
+      "credentials": {
+        "googlePalmApi": {
+          "id": "KFVt0zygfkRrj7fo",
+          "name": "Google Gemini(PaLM) Api account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatGoogleGemini",
+      "typeVersion": 1,
+      "position": [
+        3696,
+        1520
+      ],
+      "id": "50bec2ca-9f5e-4ffa-8840-57cbfcf6f997",
+      "name": "Google Gemini Guardian of Deadlines1",
+      "credentials": {
+        "googlePalmApi": {
+          "id": "KFVt0zygfkRrj7fo",
+          "name": "Google Gemini(PaLM) Api account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatGoogleGemini",
+      "typeVersion": 1,
+      "position": [
+        3696,
+        976
+      ],
+      "id": "34424768-06d6-4044-b7f6-b6c35f755558",
+      "name": "Google Gemini Guardian of Deadlines2",
+      "credentials": {
+        "googlePalmApi": {
+          "id": "KFVt0zygfkRrj7fo",
+          "name": "Google Gemini(PaLM) Api account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatGoogleGemini",
+      "typeVersion": 1,
+      "position": [
+        4496,
+        1024
+      ],
+      "id": "38d07f0e-3f45-4ba7-acc5-7e1105ff02a4",
+      "name": "Google Gemini Guardian of Deadlines3",
+      "credentials": {
+        "googlePalmApi": {
+          "id": "KFVt0zygfkRrj7fo",
+          "name": "Google Gemini(PaLM) Api account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "INSERT INTO failed_jobs (\n  job_id,\n  client_id,\n  source,\n  node_name,\n  error_type,\n  error_message,\n  payload,\n  retry_count,\n  status,\n  created_at\n)\nVALUES ($1,$2,$3,$4,$5,$6,$7,$8,'open',NOW());",
+        "options": {
+          "queryReplacement": "={{ [\n  $json.job_id || null,\n  $json.client_id || null,\n  $json.source || \"airtable\",\n  $json.api_node || $json.node_name || \"unknown_node\",\n  $json.error_type || \"UNKNOWN_ERROR\",\n  $json.error_message || \"Erreur non qualifiée\",\n  JSON.stringify($json),\n  Number($json.retry_count || 0)\n] }}"
+        }
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        1600,
+        1328
+      ],
+      "id": "beb97350-3442-4ab5-ac9f-ca4caf910419",
+      "name": "Postgres - Insert Failed Job",
+      "credentials": {
+        "postgres": {
+          "id": "hOFDtZcMDBz2Idwq",
+          "name": "Postgres account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const items = $input.all();\nconst data = items.map(item => item.json);\n\nfunction clean(value) {\n  if (value === null || value === undefined) return \"\";\n  return String(value).trim();\n}\n\nfunction isDone(status) {\n  const value = clean(status).toLowerCase();\n  return value.includes(\"done\") || value.includes(\"termin\") || value.includes(\"closed\") || value.includes(\"livré\");\n}\n\nconst loadByAssignee = {};\n\nfor (const task of data) {\n  const assignee = clean(task.assignee) || \"Non assigné\";\n\n  if (!loadByAssignee[assignee]) {\n    loadByAssignee[assignee] = {\n      total_open_tasks: 0,\n      blocked_tasks: 0,\n      high_priority_tasks: 0\n    };\n  }\n\n  if (!isDone(task.status)) {\n    loadByAssignee[assignee].total_open_tasks += 1;\n  }\n\n  if (task.blocked === true) {\n    loadByAssignee[assignee].blocked_tasks += 1;\n  }\n\n  const p = clean(task.priority).toLowerCase();\n  if (p.includes(\"critique\") || p.includes(\"haute\") || p.includes(\"high\") || p.includes(\"critical\")) {\n    loadByAssignee[assignee].high_priority_tasks += 1;\n  }\n}\n\nreturn data.map(task => {\n  const assignee = clean(task.assignee) || \"Non assigné\";\n  const load = loadByAssignee[assignee];\n\n  const overloaded =\n    load.total_open_tasks >= 6 ||\n    load.blocked_tasks >= 3 ||\n    load.high_priority_tasks >= 4;\n\n  return {\n    json: {\n      ...task,\n      developer_load: load,\n      developer_overloaded: overloaded,\n      developer_load_summary: `${assignee} a ${load.total_open_tasks} tâche(s) ouvertes, ${load.blocked_tasks} bloquée(s), ${load.high_priority_tasks} prioritaire(s).`\n    }\n  };\n});"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1376,
+        1040
+      ],
+      "id": "9debb70b-e09a-4377-afa6-cf951a3d69d7",
+      "name": "Code - Compute Developer Load",
+      "notes": "Rôle : Transformer les MR GitLab ouvertes en format compatible merge_request.\n\nContenu :\n\nChamps : iid, title, description, state, author, reviewers, assignees, created_at, updated_at, merged_at.\nDétection review et pipeline status (CI/CD).\nBlocage : blocked = true si CI échouée ou review longue."
+    },
+    {
+      "parameters": {
+        "mode": "raw",
+        "jsonOutput": "={{\n{\n  agent: \"Guardian of Deadlines\",\n  agent_failed: true,\n  critical_decision: false,\n  confidence_score: 0,\n  error_type: \"AI_AGENT_FAILURE\",\n  error_message: $json.message || $json.error?.message || \"Erreur Gemini Guardian\",\n  output: {\n    agent: \"Guardian of Deadlines\",\n    sprint_failure_probability: 0,\n    delivery_forecast: \"Analyse indisponible : Gemini indisponible ou surchargé\",\n    global_risk_level: \"À vérifier\",\n    main_failure_causes: [],\n    scope_decisions: [],\n    critical_actions: [],\n    tasks_to_deprioritize: [],\n    tasks_to_protect: [],\n    confidence_score: 0,\n    critical_decision: false\n  }\n}\n}}",
+        "includeOtherFields": true,
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        3968,
+        384
+      ],
+      "id": "949fec6f-b81f-4f8e-a077-d06faad856f2",
+      "name": "Set - Guardian AI Error"
+    },
+    {
+      "parameters": {
+        "mode": "raw",
+        "jsonOutput": "={{\n{\n  agent: \"Friction Killer\",\n  agent_failed: true,\n  critical_decision: false,\n  confidence_score: 0,\n  error_type: \"AI_AGENT_FAILURE\",\n  error_message: $json.message || $json.error?.message || \"Erreur Gemini Friction Killer\",\n  output: {\n    agent: \"Friction Killer\",\n    friction_level: \"À vérifier\",\n    blocked_reviews: [],\n    slow_reviews: [],\n    items_without_owner: [],\n    recommended_review_actions: [],\n    review_acceleration_summary: \"Analyse indisponible : Gemini indisponible ou surchargé\",\n    confidence_score: 0,\n    critical_decision: false\n  }\n}\n}}",
+        "includeOtherFields": true,
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        3968,
+        960
+      ],
+      "id": "c3ebf636-5b87-4591-a9d0-5bbdd069148d",
+      "name": "Set - Friction Killer AI Error"
+    },
+    {
+      "parameters": {
+        "mode": "raw",
+        "jsonOutput": "={{\n{\n  agent: \"Knowledge Gap Detector\",\n  agent_failed: true,\n  critical_decision: false,\n  confidence_score: 0,\n  error_type: \"AI_AGENT_FAILURE\",\n  error_message: $json.message || $json.error?.message || \"Erreur Gemini Knowledge Gap\",\n  output: {\n    agent: \"Knowledge Gap Detector\",\n    knowledge_gap_level: \"À vérifier\",\n    knowledge_risks: [],\n    senior_needed_topics: [],\n    documentation_needed: [],\n    recommended_knowledge_actions: [],\n    confidence_score: 0,\n    critical_decision: false\n  }\n}\n}}",
+        "includeOtherFields": true,
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        3968,
+        1440
+      ],
+      "id": "1ec9d51a-1bb2-4fea-af9d-514fe8e4072a",
+      "name": "Set - Knowledge Gap AI Error"
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "INSERT INTO failed_jobs (\n  job_id,\n  client_id,\n  source,\n  node_name,\n  error_type,\n  error_message,\n  payload,\n  retry_count,\n  status,\n  created_at\n)\nVALUES ($1,$2,$3,$4,$5,$6,$7,$8,'open',NOW());",
+        "options": {
+          "queryReplacement": "={{ [\n  $json.job_id || null,\n  $json.client_id || null,\n  $json.source || \"ai_agent\",\n  $json.agent || $json.node_name || \"unknown_ai_agent\",\n  $json.error_type || \"AI_AGENT_FAILURE\",\n  $json.error_message || \"Erreur IA non qualifiée\",\n  JSON.stringify($json),\n  Number($json.retry_count || 0)\n] }}"
+        }
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        4192,
+        336
+      ],
+      "id": "a4d7b08d-502c-4713-b0ce-c6fd38dd9fd5",
+      "name": "Postgres - Insert Failed Job1",
+      "credentials": {
+        "postgres": {
+          "id": "hOFDtZcMDBz2Idwq",
+          "name": "Postgres account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "INSERT INTO failed_jobs (\n  job_id,\n  client_id,\n  source,\n  node_name,\n  error_type,\n  error_message,\n  payload,\n  retry_count,\n  status,\n  created_at\n)\nVALUES ($1,$2,$3,$4,$5,$6,$7,$8,'open',NOW());",
+        "options": {
+          "queryReplacement": "={{ [\n  $json.job_id || null,\n  $json.client_id || null,\n  $json.source || \"ai_agent\",\n  $json.agent || $json.node_name || \"unknown_ai_agent\",\n  $json.error_type || \"AI_AGENT_FAILURE\",\n  $json.error_message || \"Erreur IA non qualifiée\",\n  JSON.stringify($json),\n  Number($json.retry_count || 0)\n] }}"
+        }
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        4192,
+        1200
+      ],
+      "id": "08cc00af-98f8-4a7e-a2e0-534c693f599d",
+      "name": "Postgres - Insert Failed Job2",
+      "credentials": {
+        "postgres": {
+          "id": "hOFDtZcMDBz2Idwq",
+          "name": "Postgres account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "INSERT INTO failed_jobs (\n  job_id,\n  client_id,\n  source,\n  node_name,\n  error_type,\n  error_message,\n  payload,\n  retry_count,\n  status,\n  created_at\n)\nVALUES ($1,$2,$3,$4,$5,$6,$7,$8,'open',NOW());",
+        "options": {
+          "queryReplacement": "={{ [\n  $json.job_id || null,\n  $json.client_id || null,\n  $json.source || \"ai_agent\",\n  $json.agent || $json.node_name || \"unknown_ai_agent\",\n  $json.error_type || \"AI_AGENT_FAILURE\",\n  $json.error_message || \"Erreur IA non qualifiée\",\n  JSON.stringify($json),\n  Number($json.retry_count || 0)\n] }}"
+        }
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        4192,
+        1536
+      ],
+      "id": "afa358da-c35e-44ff-9b35-97cfb400c7a9",
+      "name": "Postgres - Insert Failed Job3",
+      "credentials": {
+        "postgres": {
+          "id": "hOFDtZcMDBz2Idwq",
+          "name": "Postgres account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "f57b1428-b92c-48dc-93fb-4eb93cfe76f3",
+              "leftValue": "={{ \n  ($json.notification_required === true && Number($json.confidence_score || 0) >= 60)\n  || $json.decision_valid === false\n  || $json.ai_data_quality?.complete === false\n}}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        5440,
+        800
+      ],
+      "id": "5be9d6e5-9702-4896-9a58-23be5e91abfa",
+      "name": "IF - Notification Required ?"
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "INSERT INTO delivery_risks (\n  alert_key,\n  source,\n  type,\n  external_id,\n  task_id,\n  title,\n  status,\n  assignee,\n  priority,\n  sprint,\n  risk_score,\n  risk_level,\n  risk_type,\n  reasons_detected,\n  decision_required,\n  blocker_type,\n  pr_blocker_summary,\n  linked_pr_count,\n  linked_prs,\n  source_url,\n  sprint_health_score,\n  global_risk_level,\n  total_risks,\n  critical_risks,\n  high_risks,\n  medium_risks,\n  executive_summary,\n  status_alert,\n  detected_at,\n  updated_at,\n  raw_context\n)\nVALUES (\n  $1, $2, $3, $4, $5,\n  $6, $7, $8, $9, $10,\n  $11, $12, $13, $14, $15,\n  $16, $17, $18, $19, $20,\n  $21, $22, $23, $24, $25,\n  $26, $27, $28, $29, NOW(), $30\n)\nON CONFLICT (alert_key)\nDO UPDATE SET\n  risk_score = EXCLUDED.risk_score,\n  risk_level = EXCLUDED.risk_level,\n  risk_type = EXCLUDED.risk_type,\n  reasons_detected = EXCLUDED.reasons_detected,\n  decision_required = EXCLUDED.decision_required,\n  blocker_type = EXCLUDED.blocker_type,\n  pr_blocker_summary = EXCLUDED.pr_blocker_summary,\n  linked_pr_count = EXCLUDED.linked_pr_count,\n  linked_prs = EXCLUDED.linked_prs,\n  sprint_health_score = EXCLUDED.sprint_health_score,\n  global_risk_level = EXCLUDED.global_risk_level,\n  total_risks = EXCLUDED.total_risks,\n  critical_risks = EXCLUDED.critical_risks,\n  high_risks = EXCLUDED.high_risks,\n  medium_risks = EXCLUDED.medium_risks,\n  executive_summary = EXCLUDED.executive_summary,\n  updated_at = NOW(),\n  raw_context = EXCLUDED.raw_context\nRETURNING *;",
+        "options": {
+          "queryReplacement": "={{ [\n  $json.alert_key,\n  $json.source,\n  $json.type,\n  $json.external_id,\n  $json.task_id,\n  $json.title,\n  $json.status,\n  $json.assignee,\n  $json.priority,\n  $json.sprint,\n  $json.risk_score,\n  $json.risk_level,\n  $json.risk_type,\n  $json.reasons_detected,\n  $json.decision_required,\n  $json.blocker_type,\n  $json.pr_blocker_summary,\n  $json.linked_pr_count,\n  JSON.stringify($json.linked_prs || []),\n  $json.source_url,\n  $json.sprint_health_score,\n  $json.global_risk_level,\n  $json.total_risks,\n  $json.critical_risks,\n  $json.high_risks,\n  $json.medium_risks,\n  $json.executive_summary,\n  $json.status_alert || \"Ouverte\",\n  $json.detected_at,\n  JSON.stringify($json.raw_context || {})\n] }}"
+        }
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        2272,
+        1008
+      ],
+      "id": "a67dbfde-2f99-4265-87ef-572d74347f13",
+      "name": "Postgres - Upsert Delivery Risks",
+      "credentials": {
+        "postgres": {
+          "id": "hOFDtZcMDBz2Idwq",
+          "name": "Postgres account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "INSERT INTO delivery_decisions (\n  client_id,\n  client_name,\n  final_summary,\n  global_risk_level,\n  sprint_failure_probability,\n  critical_decision,\n  decisions_today,\n  review_actions,\n  scope_actions,\n  escalations,\n  notification_required,\n  notification_target,\n  confidence_score,\n  ai_data_quality,\n  raw_decision,\n  status,\n  created_at,\n  updated_at\n)\nVALUES (\n  $1, $2, $3, $4, $5,\n  $6, $7, $8, $9, $10,\n  $11, $12, $13, $14, $15,\n  'pending', NOW(), NOW()\n)\nRETURNING *;",
+        "options": {
+          "queryReplacement": "={{ [\n  $node[\"Set - Client Context\"].json.client_id || null,\n  $node[\"Set - Client Context\"].json.client_name || null,\n\n  $json.final_summary || \"\",\n  $json.global_risk_level || \"\",\n  Number($json.sprint_failure_probability || 0),\n  $json.critical_decision === true,\n\n  JSON.stringify($json.decisions_today || []),\n  JSON.stringify($json.review_actions || []),\n  JSON.stringify($json.scope_actions || []),\n  JSON.stringify($json.escalations || []),\n\n  $json.notification_required === true,\n  $json.notification_target || \"\",\n\n  Number($json.confidence_score || 0),\n  JSON.stringify($json.ai_data_quality || {}),\n  JSON.stringify($json.final_decision_output || $json)\n] }}"
+        }
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        5216,
+        800
+      ],
+      "id": "0904c9dc-fac5-4d96-923b-d5de6d15f006",
+      "name": "Postgres - Insert Delivery Decision",
+      "credentials": {
+        "postgres": {
+          "id": "hOFDtZcMDBz2Idwq",
+          "name": "Postgres account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "f57b1428-b92c-48dc-93fb-4eb93cfe76f3",
+              "leftValue": "={{ \n  !$json.last_notified_at \n  || new Date($json.last_notified_at).getTime() < Date.now() - 6 * 60 * 60 * 1000\n}}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        5888,
+        800
+      ],
+      "id": "de10aa1b-ae50-420d-afcc-44194ca0fd54",
+      "name": "IF - Should Notify ?"
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "INSERT INTO failed_jobs (\n  job_id,\n  client_id,\n  source,\n  node_name,\n  error_type,\n  error_message,\n  payload,\n  retry_count,\n  status,\n  created_at\n)\nVALUES ($1,$2,$3,$4,$5,$6,$7,$8,'open',NOW());",
+        "options": {
+          "queryReplacement": "={{ [\n  $json.job_id || null,\n  $json.client_id || null,\n  $json.source || \"ai_agent\",\n  $json.agent || $json.node_name || \"unknown_ai_agent\",\n  $json.error_type || \"AI_AGENT_FAILURE\",\n  $json.error_message || \"Erreur IA non qualifiée\",\n  JSON.stringify($json),\n  Number($json.retry_count || 0)\n] }}"
+        }
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        4992,
+        1056
+      ],
+      "id": "7bdf25b4-a8db-4635-89a3-4cedeff32a3c",
+      "name": "Postgres - Insert Failed Job4",
+      "credentials": {
+        "postgres": {
+          "id": "hOFDtZcMDBz2Idwq",
+          "name": "Postgres account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "mode": "raw",
+        "jsonOutput": "={{\n{\n  decision_valid: false,\n  error_type: \"DECISION_SYNTHESIZER_FAILURE\",\n  error_message: $json.message || $json.error?.message || \"Erreur Gemini Decision Synthesizer\",\n  final_summary: \"FlowMind a détecté des risques, mais la synthèse finale IA est indisponible. Vérification manuelle requise.\",\n  global_risk_level: \"À vérifier\",\n  sprint_failure_probability: 0,\n  critical_decision: true,\n  ai_data_quality: {\n    complete: false,\n    failed_agents: [\"Decision Synthesizer\"],\n    warning: \"Le synthétiseur IA a échoué ou Gemini était indisponible.\"\n  },\n  decisions_today: [\n    \"Vérifier manuellement les risques détectés dans delivery_risks.\",\n    \"Relancer l’analyse IA lorsque Gemini est disponible.\"\n  ],\n  review_actions: [],\n  scope_actions: [],\n  escalations: [\n    \"Contrôle manuel PM requis.\"\n  ],\n  notification_required: true,\n  notification_target: \"ops\",\n  slack_message: \"FlowMind : la synthèse finale IA a échoué. Les risques sont détectés, mais une vérification manuelle est nécessaire.\",\n  confidence_score: 0,\n  created_at: new Date().toISOString()\n}\n}}",
+        "includeOtherFields": true,
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        4768,
+        1056
+      ],
+      "id": "86c3bf0d-e230-4ec7-8342-d02b0ec48f87",
+      "name": "Set - Decision Synthesizer Error"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "f57b1428-b92c-48dc-93fb-4eb93cfe76f3",
+              "leftValue": "={{\n  ($json.notification_required === true && Number($json.confidence_score || 0) >= 60)\n  || $json.decision_valid === false\n  || $json.ai_data_quality?.complete === false\n}}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        5440,
+        1056
+      ],
+      "id": "25dc7186-28f6-4b72-9871-76888411e207",
+      "name": "IF - Notification Required ?1"
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "INSERT INTO delivery_decisions (\n  client_id,\n  client_name,\n  final_summary,\n  global_risk_level,\n  sprint_failure_probability,\n  critical_decision,\n  decisions_today,\n  review_actions,\n  scope_actions,\n  escalations,\n  notification_required,\n  notification_target,\n  confidence_score,\n  ai_data_quality,\n  raw_decision,\n  status,\n  created_at,\n  updated_at\n)\nVALUES (\n  $1, $2, $3, $4, $5,\n  $6, $7, $8, $9, $10,\n  $11, $12, $13, $14, $15,\n  'pending', NOW(), NOW()\n)\nRETURNING *;",
+        "options": {
+          "queryReplacement": "={{ [\n  $node[\"Set - Client Context\"].json.client_id || null,\n  $node[\"Set - Client Context\"].json.client_name || null,\n\n  $json.final_summary || \"\",\n  $json.global_risk_level || \"\",\n  Number($json.sprint_failure_probability || 0),\n  $json.critical_decision === true,\n\n  JSON.stringify($json.decisions_today || []),\n  JSON.stringify($json.review_actions || []),\n  JSON.stringify($json.scope_actions || []),\n  JSON.stringify($json.escalations || []),\n\n  $json.notification_required === true,\n  $json.notification_target || \"\",\n\n  Number($json.confidence_score || 0),\n  JSON.stringify($json.ai_data_quality || {}),\n  JSON.stringify($json.final_decision_output || $json)\n] }}"
+        }
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        5216,
+        1056
+      ],
+      "id": "35ee6c3e-a3fc-4f8e-aea9-e126db553382",
+      "name": "Postgres - Insert Delivery Decision1",
+      "credentials": {
+        "postgres": {
+          "id": "hOFDtZcMDBz2Idwq",
+          "name": "Postgres account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "content": "",
+        "height": 2576,
+        "width": 5920,
+        "color": 6
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        432,
+        -208
+      ],
+      "typeVersion": 1,
+      "id": "f5373aae-941c-4bc0-8c52-0419ba714a5d",
+      "name": "Sticky Note"
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "INSERT INTO sprint_health_history (\n  client_id,\n  client_name,\n  sprint,\n  sprint_start_date,\n  sprint_end_date,\n  sprint_health_score,\n  global_risk_level,\n  total_risks,\n  critical_risks,\n  high_risks,\n  medium_risks,\n  total_risk_score,\n  top_risk_types,\n  top_assignees,\n  executive_summary,\n  analyzed_at,\n  raw_context\n)\nVALUES (\n  $1, $2, $3, $4, $5,\n  $6, $7, $8, $9, $10,\n  $11, $12, $13, $14, $15,\n  NOW(), $16\n)\nRETURNING *;",
+        "options": {
+          "queryReplacement": "={{ [\n  $(\"Set - Client Context\").first().json.client_id || null,\n  $(\"Set - Client Context\").first().json.client_name || null,\n\n  $json.sprint || $(\"Set - Client Context\").first().json.current_sprint || \"Sprint courant\",\n  $(\"Set - Client Context\").first().json.sprint_start_date || null,\n  $(\"Set - Client Context\").first().json.sprint_end_date || null,\n\n  Number($json.sprint_health_score || 0),\n  $json.global_risk_level || \"\",\n  Number($json.total_risks || 0),\n  Number($json.critical_risks || 0),\n  Number($json.high_risks || 0),\n  Number($json.medium_risks || 0),\n\n  Number($json.total_risk_score || 0),\n  $json.top_risk_types || \"\",\n  $json.top_assignees || \"\",\n  $json.executive_summary || \"\",\n\n  JSON.stringify($json)\n] }}"
+        }
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        2720,
+        816
+      ],
+      "id": "24f1707a-97ae-4cd2-ac95-528998e87489",
+      "name": "Postgres - Insert Sprint Health Snapshot",
+      "credentials": {
+        "postgres": {
+          "id": "hOFDtZcMDBz2Idwq",
+          "name": "Postgres account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "WITH previous_snapshot AS (\n  SELECT\n    sprint_health_score,\n    global_risk_level,\n    total_risks,\n    critical_risks,\n    analyzed_at\n  FROM sprint_health_history\n  WHERE client_id = $1\n    AND id <> $2\n  ORDER BY analyzed_at DESC\n  LIMIT 1\n)\nSELECT\n  sprint_health_score,\n  global_risk_level,\n  total_risks,\n  critical_risks,\n  analyzed_at,\n  false AS is_first_measure\nFROM previous_snapshot\n\nUNION ALL\n\nSELECT\n  NULL AS sprint_health_score,\n  NULL AS global_risk_level,\n  NULL AS total_risks,\n  NULL AS critical_risks,\n  NULL AS analyzed_at,\n  true AS is_first_measure\nWHERE NOT EXISTS (\n  SELECT 1 FROM previous_snapshot\n);",
+        "options": {
+          "queryReplacement": "={{ [\n  $(\"Set - Client Context\").first().json.client_id,\n  $json.id\n] }}"
+        }
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        2944,
+        816
+      ],
+      "id": "d058bf41-538b-4ad8-84e4-d3d65e970464",
+      "name": "Postgres - Get Previous Sprint Health",
+      "alwaysOutputData": true,
+      "credentials": {
+        "postgres": {
+          "id": "hOFDtZcMDBz2Idwq",
+          "name": "Postgres account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "mode": "raw",
+        "jsonOutput": "={{\n  Object.assign({}, $json, {\n    current_sprint_health_score: $json.sprint_health_score,\n    current_global_risk_level: $json.global_risk_level,\n    current_total_risks: $json.total_risks,\n    current_critical_risks: $json.critical_risks,\n    current_executive_summary: $json.executive_summary\n  })\n}}",
+        "includeOtherFields": true,
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        2496,
+        816
+      ],
+      "id": "d99fbf12-06e6-4639-9f56-a03e0326b81f",
+      "name": "Set - Current Sprint Health Context"
+    },
+    {
+      "parameters": {
+        "jsCode": "const items = $input.all();\n\nconst current = $(\"Set - Current Sprint Health Context\").first().json;\nconst previous = items[0]?.json || null;\n\nconst currentScore = Number(\n  current.current_sprint_health_score ||\n  current.sprint_health_score ||\n  0\n);\n\nconst hasPrevious =\n  previous &&\n  previous.is_first_measure !== true &&\n  previous.sprint_health_score !== null &&\n  previous.sprint_health_score !== undefined;\n\nconst previousScore = hasPrevious\n  ? Number(previous.sprint_health_score || 0)\n  : null;\n\nlet trend = \"premiere_mesure\";\nlet trend_label = \"Première mesure\";\nlet trend_delta = null;\nlet trend_message = \"Première mesure enregistrée. La tendance sera calculée à partir de la prochaine analyse.\";\n\nif (hasPrevious) {\n  trend_delta = currentScore - previousScore;\n\n  if (trend_delta <= -10) {\n    trend = \"degradation\";\n    trend_label = \"Dégradation\";\n    trend_message = `Le sprint se dégrade : ${trend_delta} points par rapport à la précédente mesure.`;\n  } else if (trend_delta >= 10) {\n    trend = \"amelioration\";\n    trend_label = \"Amélioration\";\n    trend_message = `Le sprint s’améliore : +${trend_delta} points par rapport à la précédente mesure.`;\n  } else {\n    trend = \"stable\";\n    trend_label = \"Stable\";\n    trend_message = `Le sprint est globalement stable : ${trend_delta >= 0 ? \"+\" : \"\"}${trend_delta} point(s).`;\n  }\n}\n\nreturn [\n  {\n    json: {\n      ...current,\n\n      previous_sprint_health_score: previousScore,\n      current_sprint_health_score: currentScore,\n\n      trend,\n      trend_label,\n      trend_delta,\n      trend_message,\n\n      previous_global_risk_level: hasPrevious ? previous.global_risk_level : null,\n      previous_total_risks: hasPrevious ? previous.total_risks : null,\n      previous_critical_risks: hasPrevious ? previous.critical_risks : null,\n      previous_analyzed_at: hasPrevious ? previous.analyzed_at : null,\n\n      is_first_measure: !hasPrevious,\n      trend_calculated_at: new Date().toISOString()\n    }\n  }\n];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        3168,
+        816
+      ],
+      "id": "c6aac21a-49ae-4270-af0a-8746b598a112",
+      "name": "Code - Calculate Sprint Trend",
+      "notesInFlow": true,
+      "notes": "Rôle : relier les task aux PR / MR correspondantes.\nChamps ajoutés : linked_prs, linked_pr_count, has_blocked_pr, has_waiting_review, has_failed_ci."
+    },
+    {
+      "parameters": {
+        "jsCode": "const items = $input.all();\n\nif (items.length === 0) {\n  return [\n    {\n      json: {\n        sprint_health_score: 100,\n        global_risk_level: \"Faible\",\n        total_risks: 0,\n        critical_risks: 0,\n        high_risks: 0,\n        medium_risks: 0,\n        total_risk_score: 0,\n        top_risk_types: \"\",\n        top_assignees: \"\",\n        executive_summary: \"Aucun risque détecté.\",\n        analyzed_at: new Date().toISOString()\n      }\n    }\n  ];\n}\n\nconst first = items[0].json;\n\nreturn [\n  {\n    json: {\n      client_id: $(\"Set - Client Context\").first().json.client_id || null,\n      client_name: $(\"Set - Client Context\").first().json.client_name || null,\n\n      sprint: first.sprint || $(\"Set - Client Context\").first().json.current_sprint || \"Sprint courant\",\n      sprint_start_date: $(\"Set - Client Context\").first().json.sprint_start_date || null,\n      sprint_end_date: $(\"Set - Client Context\").first().json.sprint_end_date || null,\n\n      sprint_health_score: first.sprint_health_score || 0,\n      global_risk_level: first.global_risk_level || \"\",\n      total_risks: first.total_risks || 0,\n      critical_risks: first.critical_risks || 0,\n      high_risks: first.high_risks || 0,\n      medium_risks: first.medium_risks || 0,\n      total_risk_score: first.total_risk_score || 0,\n      top_risk_types: first.top_risk_types || \"\",\n      top_assignees: first.top_assignees || \"\",\n      executive_summary: first.executive_summary || \"\",\n\n      raw_context: {\n        risks_count: items.length,\n        sample_risks: items.slice(0, 10).map(i => i.json)\n      },\n\n      analyzed_at: new Date().toISOString()\n    }\n  }\n];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2272,
+        816
+      ],
+      "id": "76359c03-ddf7-48c3-9ef3-eb2e946a8855",
+      "name": "Code - Build Single Sprint Health Snapshot",
+      "notesInFlow": true,
+      "notes": "Rôle : relier les task aux PR / MR correspondantes.\nChamps ajoutés : linked_prs, linked_pr_count, has_blocked_pr, has_waiting_review, has_failed_ci."
+    }
+  ],
+  "pinData": {
+    "Schedule Trigger": [
+      {
+        "json": {
+          "timestamp": "2026-05-20T06:04:30.773-04:00",
+          "Readable date": "May 20th 2026, 6:04:30 am",
+          "Readable time": "6:04:30 am",
+          "Day of week": "Wednesday",
+          "Year": "2026",
+          "Month": "May",
+          "Day of month": "20",
+          "Hour": "06",
+          "Minute": "04",
+          "Second": "30",
+          "Timezone": "America/New_York (UTC-04:00)"
+        },
+        "pairedItem": {
+          "item": 0
+        }
+      }
+    ]
+  },
+  "connections": {
+    "Schedule Trigger": {
+      "main": [
+        [
+          {
+            "node": "Set - Client Context",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Set - Client Context": {
+      "main": [
+        [
+          {
+            "node": "HTTP - Airtable Get Sprint Items",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Set - Notify PM / Second Reviewer": {
+      "main": [
+        [
+          {
+            "node": "IF - Should Notify ?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code - Validate Final Decision Output": {
+      "main": [
+        [
+          {
+            "node": "Postgres - Insert Delivery Decision",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI Agent - Decision Synthesizer": {
+      "main": [
+        [
+          {
+            "node": "Code - Validate Final Decision Output",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Set - Decision Synthesizer Error",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Merge - Agent Outputs": {
+      "main": [
+        [
+          {
+            "node": "AI Agent - Decision Synthesizer",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI Agent - Knowledge Gap Detector": {
+      "main": [
+        [
+          {
+            "node": "Merge - Agent Outputs",
+            "type": "main",
+            "index": 2
+          }
+        ],
+        [
+          {
+            "node": "Set - Knowledge Gap AI Error",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI Agent - Friction Killer": {
+      "main": [
+        [
+          {
+            "node": "Merge - Agent Outputs",
+            "type": "main",
+            "index": 1
+          }
+        ],
+        [
+          {
+            "node": "Set - Friction Killer AI Error",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI Agent - Guardian of Deadlines": {
+      "main": [
+        [
+          {
+            "node": "Merge - Agent Outputs",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Set - Guardian AI Error",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code - Build Anti-Failure Context": {
+      "main": [
+        [
+          {
+            "node": "AI Agent - Guardian of Deadlines",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "AI Agent - Friction Killer",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "AI Agent - Knowledge Gap Detector",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code - Sprint Health Score": {
+      "main": [
+        [
+          {
+            "node": "Postgres - Upsert Delivery Risks",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Code - Build Single Sprint Health Snapshot",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code - Detect Delivery Risks": {
+      "main": [
+        [
+          {
+            "node": "Code - Sprint Health Score",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "IF - Airtable Item Valide ?": {
+      "main": [
+        [
+          {
+            "node": "Code - Detect Delivery Risks",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Set - Airtable Validation Error",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code - Normalize Airtable Sprint Items": {
+      "main": [
+        [
+          {
+            "node": "Code - Compute Developer Load",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HTTP - Airtable Get Sprint Items": {
+      "main": [
+        [
+          {
+            "node": "Code - Normalize Airtable Sprint Items",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Set - Airtable API Error",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Set - Airtable Validation Error": {
+      "main": [
+        [
+          {
+            "node": "Postgres - Insert Airtable Audit Log",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Set - Airtable API Error": {
+      "main": [
+        [
+          {
+            "node": "Postgres - Insert API Audit Log",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Slack - Notify Ops API Error": {
+      "main": [
+        [
+          {
+            "node": "Wait - Airtable Retry Delay",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Postgres - Insert API Audit Log": {
+      "main": [
+        [
+          {
+            "node": "Postgres - Insert Failed Job",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "IF - Airtable Retry Count < 3 ?": {
+      "main": [
+        [
+          {
+            "node": "Set - Client Context",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Wait - Airtable Retry Delay": {
+      "main": [
+        [
+          {
+            "node": "IF - Airtable Retry Count < 3 ?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Google Gemini Guardian of Deadlines": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AI Agent - Guardian of Deadlines",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Google Gemini Guardian of Deadlines2": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AI Agent - Friction Killer",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Google Gemini Guardian of Deadlines1": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AI Agent - Knowledge Gap Detector",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Google Gemini Guardian of Deadlines3": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AI Agent - Decision Synthesizer",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Postgres - Insert Failed Job": {
+      "main": [
+        [
+          {
+            "node": "Slack - Notify Ops API Error",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code - Compute Developer Load": {
+      "main": [
+        [
+          {
+            "node": "IF - Airtable Item Valide ?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Set - Guardian AI Error": {
+      "main": [
+        [
+          {
+            "node": "Postgres - Insert Failed Job1",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Merge - Agent Outputs",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Set - Friction Killer AI Error": {
+      "main": [
+        [
+          {
+            "node": "Postgres - Insert Failed Job2",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Merge - Agent Outputs",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "Set - Knowledge Gap AI Error": {
+      "main": [
+        [
+          {
+            "node": "Postgres - Insert Failed Job3",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Merge - Agent Outputs",
+            "type": "main",
+            "index": 2
+          }
+        ]
+      ]
+    },
+    "IF - Notification Required ?": {
+      "main": [
+        [
+          {
+            "node": "Set - Notify PM / Second Reviewer",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Postgres - Insert Agent Recommendations",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Postgres - Insert Delivery Decision": {
+      "main": [
+        [
+          {
+            "node": "IF - Notification Required ?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "IF - Should Notify ?": {
+      "main": [
+        [
+          {
+            "node": "Slack Notifications",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Set - Decision Synthesizer Error": {
+      "main": [
+        [
+          {
+            "node": "Postgres - Insert Failed Job4",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "IF - Notification Required ?1": {
+      "main": [
+        [
+          {
+            "node": "Set - Notify PM / Second Reviewer",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Postgres - Insert Failed Job4": {
+      "main": [
+        [
+          {
+            "node": "Postgres - Insert Delivery Decision1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Postgres - Insert Delivery Decision1": {
+      "main": [
+        [
+          {
+            "node": "IF - Notification Required ?1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Postgres - Insert Sprint Health Snapshot": {
+      "main": [
+        [
+          {
+            "node": "Postgres - Get Previous Sprint Health",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Set - Current Sprint Health Context": {
+      "main": [
+        [
+          {
+            "node": "Postgres - Insert Sprint Health Snapshot",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Postgres - Get Previous Sprint Health": {
+      "main": [
+        [
+          {
+            "node": "Code - Calculate Sprint Trend",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code - Calculate Sprint Trend": {
+      "main": [
+        [
+          {
+            "node": "Code - Build Anti-Failure Context",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code - Build Single Sprint Health Snapshot": {
+      "main": [
+        [
+          {
+            "node": "Set - Current Sprint Health Context",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate"
+  },
+  "versionId": "8cc2bc90-3b45-4e31-81ba-9e475115e456",
+  "meta": {
+    "instanceId": "08a5a7ca1053f8e73004eb8a4a70aa60f597d80f00d24abfe1fd3a3c4d28486d"
+  },
+  "id": "7ctJMeI6VFXhA7Wt",
+  "tags": []
+}
